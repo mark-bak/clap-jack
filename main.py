@@ -159,7 +159,7 @@ class StickPlayer(SimplePlayer):
 
 class ProbPlayer(SimplePlayer):
     def __init__(self):
-
+        pass
 
 
 res=[]
