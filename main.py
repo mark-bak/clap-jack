@@ -167,6 +167,7 @@ class ProbPlayer(SimplePlayer):
             perms = permutations(value_list,self.depth)
             search = ProbSearch(list(perms),self.depth,self.score)
             search.prune()
+            r = search.tot_score()
             print('score:'+str(self.score))
             print('winning'+str(search.winners))
             print('losing'+str(search.losers))
@@ -181,7 +182,10 @@ class ProbPlayer(SimplePlayer):
 class ProbSearch():
     def __init__(self,perms,depth,score):
         self.winners = perms
+        for i in range(0,len(self.winners)):
+            self.winners[i] = list(self.winners[i])
         self.losers = []
+        self.cum_score =[]
         self.depth = depth
         self.score = score
 
@@ -189,6 +193,14 @@ class ProbSearch():
         while self.score + self.winners[-1][0]>25:
             ret = self.winners.pop(-1)
             self.losers.append(ret)
+
+    def tot_score(self):
+        self.cum_score = [self.score]*len(self.winners)
+        for i in range(1,self.depth):
+            self.cum_score = [self.cum_score, list(self.winners[:][i-1])] 
+            print(self.cum_score)
+
+
 
 
 
