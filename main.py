@@ -137,9 +137,6 @@ class SimplePlayer():
         }
 
     def decide(self):
-        #if self.score>self.stick_val:
-        #    return 'stick'
-        #else:
         return 'draw'
 
     def update(self,card,value):
