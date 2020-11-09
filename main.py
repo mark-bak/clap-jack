@@ -158,50 +158,7 @@ class StickPlayer(SimplePlayer):
             return 'draw'
 
 class ProbPlayer(SimplePlayer):
-    def __init__(self,depth):
-        self.depth = depth
-
-    def decide(self):
-        if self.score>15:
-            value_list = self.cards_remaining.values()
-            perms = permutations(value_list,self.depth)
-            search = ProbSearch(list(perms),self.depth,self.score)
-            search.prune()
-            r = search.tot_score()
-            print('score:'+str(self.score))
-            print('winning'+str(search.winners))
-            print('losing'+str(search.losers))
-
-            #print(list(perms))
-            
-            return 'stick'
-        else:
-            return 'draw'
-
-
-class ProbSearch():
-    def __init__(self,perms,depth,score):
-        self.winners = perms
-        for i in range(0,len(self.winners)):
-            self.winners[i] = list(self.winners[i])
-        self.losers = []
-        self.cum_score =[]
-        self.depth = depth
-        self.score = score
-
-    def prune(self):
-        while self.score + self.winners[-1][0]>25:
-            ret = self.winners.pop(-1)
-            self.losers.append(ret)
-
-    def tot_score(self):
-        self.cum_score = [self.score]*len(self.winners)
-        for i in range(1,self.depth):
-            self.cum_score = [self.cum_score, list(self.winners[:][i-1])] 
-            print(self.cum_score)
-
-
-
+    def __init__(self):
 
 
 
@@ -212,17 +169,7 @@ for v in vals:
     p=[]
     player = StickPlayer(v)
     game = Game(player)
-    for i in range(0,10000):
-        game.start()
-        p.append(game.play())
-    res.append(round(sum(p)/len(p),2))
-
-depth = [2]
-for q in depth:
-    player = ProbPlayer(q)
-    game = Game(player)
-    p=[]
-    for i in range(0,1):
+    for i in range(0,1000):
         game.start()
         p.append(game.play())
     res.append(round(sum(p)/len(p),2))
