@@ -13,18 +13,19 @@ class Game():
             self.step()
 
     def step(self):
-        #check if cards left before draw
-        if self.c.cards_left == False:
+        
+        #check if cards remaining or player is bust
+        if self.c.cards_left == False or self.player.score>25:
             self.end_game(self.player)
         else:
-            d = self.player.play(self.c)
-            if d == 'stick':
+            #see what palyer wants to do, stick or get new card dealt
+            decision = self.player.decide()
+            if decision == 'stick':
                 self.end_game(self.player)
-            
-        #check if bust after draw
-        if self.player.score>25:
-            print('bust')
-            self.end_game(self.player)
+            else:
+                card,value = self.c.deal()
+                self.player.update(card,value)
+
 
     def end_game(self,player):
         if player.score >25 or player.score <16:
@@ -84,7 +85,7 @@ class Cards():
 
     def deal(self):
         #deal card, returns name and nominal value
-        if self.n+1==len(self.order):
+        if self.n+1==len(self.order): # check cards left
             self.cards_left = False
         card = self.order[self.n]
         value = self.cards[self.order[self.n]]
@@ -126,15 +127,13 @@ class SimplePlayer():
         self.cards_dealt ={}
         self.score = 0
 
-    def play(self,deck):
+    def decide(self):
         if self.score>17:
             return 'stick'
         else:
-            self.draw_card(deck)
             return 'draw'
 
-    def draw_card(self,deck):
-        card,value = deck.deal()
+    def update(self,card,value):
         self.cards_remaining.pop(card)
         self.cards_dealt[card] = value
         self.score+=value
