@@ -1,5 +1,6 @@
 import random
 from itertools import permutations
+from collections import Counter
 
 class Game():
 
@@ -139,9 +140,13 @@ class ProbPlayer(SimplePlayer):
             perms = list(permutations(self.cards_remaining.values(),n_rem_cards))
             permslist = [list(t) for t in perms]
             cumulative_score = self.cumulative_score(permslist,n_rem_cards)
-            p_imp = self.determine_prob(cumulative_score,n_rem_cards)
-            #print(p_imp)
-
+            s_ex = self.determine_prob(cumulative_score,n_rem_cards)
+            #print('expected: '+str(s_ex))
+            #print('current: ' + str(25-self.score))
+            if s_ex>25-self.score:
+                return 'stick'
+            #else:
+            #    print('hit me')
         if self.score>self.stick_val and n_rem_cards>self.depth:
             return 'stick'
         else:
@@ -150,32 +155,37 @@ class ProbPlayer(SimplePlayer):
     def cumulative_score(self,lis,d):
         for i in range(0,len(lis)):
             lis[i][0] += self.score 
-            for j in range(1,d-1):
+            for j in range(1,d):
                 lis[i][j] += lis[i][j-1]
         return lis
 
     def determine_prob(self,c_s,d):
-        bust_ind =[]
-        bet_ind = []
+        #bust_ind =[]
+        #bet_ind = []
+        scores =[]
 
         check_ind = []
         check_ind_next = list(range(0,len(c_s)))
         #worse_ind =[]
-        for j in range(0,d-1):
-            check_ind = check_ind_next
+        for j in range(0,d):
+            check_ind = check_ind_next[:]
             check_ind_next.clear()
             #check whether lines are bust or winning
-            for i in range(0,len(check_ind)):
-                if c_s[check_ind[i]][j]>25:
-                    bust_ind.append(check_ind[i])
-                    check_ind_next.append(check_ind[i])
-                if c_s[check_ind[i]][j]>self.score and c_s[check_ind[i]][j]<=25:
-                    bet_ind.append(check_ind[i])
-                    check_ind_next.append(check_ind[i])
-                print(i)
+            for i in check_ind:
+                if c_s[i][j]>25:
+                    #bust_ind.append(i)
+                    scores.append(10)
+                elif c_s[i][j]>15 and c_s[i][j]<=25:
+                    #bet_ind.append(i)
+                    scores.append(25-c_s[i][j])
+                else:
+                    check_ind_next.append(i)
 
-        prob = len(bet_ind)/len(c_s)
-        return prob
+        scores = scores+[10]*len(check_ind)
+        base_prob = 1/len(c_s)
+
+        score_exp = sum(scores)*base_prob
+        return score_exp
 
 
 
@@ -192,7 +202,7 @@ for v in vals:
         p.append(game.play())
     res.append(round(sum(p)/len(p),2))
     p=[]
-    player = ProbPlayer(v,6)
+    player = ProbPlayer(v,7)
     game = Game(player)
     for i in range(0,1000):
         game.start()
