@@ -106,40 +106,10 @@ class SimplePlayer():
     def reset(self):
         self.cards_dealt ={}
         self.score = 0
-        self.cards_remaining = {
-            "rA":-1,
-            "r2":-2,
-            "r3":-3,
-            "r4":-4,
-            "r5":-5,
-            "r6":-6,
-            "r7":-7,            
-            "r8":-8,
-            "r9":-9,
-            "r10":-10,
-            "rJ":-10,
-            "rQ":-10,
-            "rK":-10,
-
-            "b2":2,
-            "b3":3,
-            "b4":4,
-            "b5":5,
-            "b6":6,
-            "b7":7,            
-            "b8":8,
-            "b9":9,
-            "b10":10,
-            "bJ":10,
-            "bQ":10,
-            "bK":10,
-            "bA":11,
-        }
+        c = Cards()
+        self.cards_remaining = c.cards
 
     def decide(self):
-        #if self.score>self.stick_val:
-        #    return 'stick'
-        #else:
         return 'draw'
 
     def update(self,card,value):
@@ -158,11 +128,59 @@ class StickPlayer(SimplePlayer):
             return 'draw'
 
 class ProbPlayer(SimplePlayer):
-    def __init__(self):
-        pass
+    def __init__(self,stick_val,depth):
+        self.stick_val = stick_val
+        self.depth=depth
+
+    def decide(self):
+        n_rem_cards = len(self.cards_remaining)
+        if self.score>15 and n_rem_cards<=self.depth:
+
+            perms = list(permutations(self.cards_remaining.values(),n_rem_cards))
+            permslist = [list(t) for t in perms]
+            cumulative_score = self.cumulative_score(permslist,n_rem_cards)
+            p_imp = self.determine_prob(cumulative_score,n_rem_cards)
+            #print(p_imp)
+
+        if self.score>self.stick_val and n_rem_cards>self.depth:
+            return 'stick'
+        else:
+            return 'draw'
+
+    def cumulative_score(self,lis,d):
+        for i in range(0,len(lis)):
+            lis[i][0] += self.score 
+            for j in range(1,d-1):
+                lis[i][j] += lis[i][j-1]
+        return lis
+
+    def determine_prob(self,c_s,d):
+        bust_ind =[]
+        bet_ind = []
+
+        check_ind = []
+        check_ind_next = list(range(0,len(c_s)))
+        #worse_ind =[]
+        for j in range(0,d-1):
+            check_ind = check_ind_next
+            check_ind_next.clear()
+            #check whether lines are bust or winning
+            for i in range(0,len(check_ind)):
+                if c_s[check_ind[i]][j]>25:
+                    bust_ind.append(check_ind[i])
+                    check_ind_next.append(check_ind[i])
+                if c_s[check_ind[i]][j]>self.score and c_s[check_ind[i]][j]<=25:
+                    bet_ind.append(check_ind[i])
+                    check_ind_next.append(check_ind[i])
+                print(i)
+
+        prob = len(bet_ind)/len(c_s)
+        return prob
+
 
 
 res=[]
+
 vals = [18]
 
 for v in vals:
@@ -173,6 +191,15 @@ for v in vals:
         game.start()
         p.append(game.play())
     res.append(round(sum(p)/len(p),2))
+    p=[]
+    player = ProbPlayer(v,6)
+    game = Game(player)
+    for i in range(0,1000):
+        game.start()
+        p.append(game.play())
+    res.append(round(sum(p)/len(p),2))
+
+
 
 print(res)
 
