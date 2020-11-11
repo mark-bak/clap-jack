@@ -1,5 +1,6 @@
 ##Some code to simulate an odd card game with different play strategies
 import random
+import math
 from itertools import permutations
 import matplotlib.pyplot as plt
 
@@ -25,7 +26,7 @@ class Game():
         if self.c.cards_left == False or self.player.score>25:
             p = self.end_game(self.player)
         else:
-            #see what palyer wants to do, stick or get new card dealt
+            #see what player wants to do, stick or get new card dealt
             decision = self.player.decide()
             if decision == 'stick':
                 p = self.end_game(self.player)
@@ -124,6 +125,24 @@ class StickPlayer(SimplePlayer):
         else:
             return 'draw'
 
+class ImpStickPlayer(SimplePlayer):
+    def __init__(self,stick_val):
+        self.stick_val = stick_val
+
+    def decide(self):
+        if self.score>=self.stick_val:
+            return 'stick'
+        else:
+            return 'draw'
+
+    def update(self,card,value):
+        #set ace low if it makes you bust
+        if card == 'bA' and self.score+value>25:
+            value = 1
+        self.cards_remaining.pop(card)
+        self.cards_dealt[card] = value
+        self.score+=value
+
 class ProbPlayer(SimplePlayer):
     def __init__(self,stick_val,depth):
         self.stick_val = stick_val
@@ -166,14 +185,15 @@ class ProbPlayer(SimplePlayer):
         for j in range(0,d):
             check_ind = check_ind_next[:]
             check_ind_next.clear()
+            
             #check whether lines are bust or winning
             for i in check_ind:
-                if c_s[i][j]>25:
-                    #bust_ind.append(i)
+                if c_s[i][j]>25:                  
                     scores.append(10)
+                    #bust_ind.append(i)
                 elif c_s[i][j]>15 and c_s[i][j]<=25:
-                    #bet_ind.append(i)
                     scores.append(25-c_s[i][j])
+                    #bet_ind.append(i)
                 else:
                     check_ind_next.append(i)
 
@@ -182,6 +202,20 @@ class ProbPlayer(SimplePlayer):
 
         score_exp = sum(scores)*base_prob
         return score_exp
+
+class ImpProbPlayer(ProbPlayer):
+    def __init__(self,stick_val,depth):
+        super().__init__(stick_val,depth)
+
+    def update(self,card,value):
+        #set ace low if it makes you bust
+        if card == 'bA' and self.score+value>25:
+            value = 1
+        self.cards_remaining.pop(card)
+        self.cards_dealt[card] = value
+        self.score+=value
+    
+
 
 def play_games(player,no_games):
     game = Game(player)
@@ -192,48 +226,52 @@ def play_games(player,no_games):
     return points
 
 
-
-def test_stick(no_games,vals):
-    results =[]
+if __name__ == "__main__":
+    #stops these tests from running if this is imported as a moduel for some reason
+    exp = 5
+    n_g = pow(10,exp)
+    ## find optimal stick value ##
+    vals = [16,17,18,19,20,21,22,23,24,25]
+    valstr = [str(v) for v in vals]
+    res=[]
     for v in vals:
         player = StickPlayer(v)
-        results.append(play_games(player,no_games))
-    return results
+        res.append(play_games(player,n_g))
+    res_ave =[sum(r)/len(r) for r in res]
 
-def test_prob(no_games,vals,depth):
-    results =[]
-    for d in depth:
-        player = ProbPlayer(vals,d)
-        results.append(play_games(player,no_games))
-    return results
+    #plotting
+    plt.figure(1)
+    plt.bar(valstr,res_ave)
+    for i,v in enumerate(res_ave):
+        plt.text(i-.3,v+.1,str(round(v,2)))
+    plt.ylim([0,10])
+    plt.title('bA = 11, rA = -1')
+    plt.xlabel('Stick number')
+    plt.ylabel('Mean points after $10^{}$ games'.format(str(exp)))
 
-n_g = 100000
+    ## compare optimal stick, improved aces and prob player ##
+    res2 = []
+    player = StickPlayer(19)
+    res2.append(play_games(player,n_g))
+    player = ImpStickPlayer(19)
+    res2.append(play_games(player,n_g))
+    player = ProbPlayer(19,7)
+    res2.append(play_games(player,n_g))
+    player = ImpProbPlayer(19,7)
+    res2.append(play_games(player,n_g))
 
-#plot optimal stick value
-vals = [16,17,18,19,20,21,22,23,24,25]
-valstr = [str(v) for v in vals]
-res = test_stick(n_g,vals)
-res_ave =[]
+    res2_ave =[sum(r)/len(r) for r in res2]
 
-for i in range(0,len(res)):
-    res_ave.append(sum(res[i])/len(res[i]))
+    labels=['S_19','S_19_Ace','S_19_P','S_19_P_Ace']
+    #plotting
+    plt.figure(2)
+    plt.bar(labels,res2_ave)
+    for i,v in enumerate(res2_ave):
+        plt.text(i-.1,v+.1,str(round(v,2)))
+    plt.ylim([0,10])
+    plt.title('Comparison of improved strategies')
+    plt.xlabel('Strategy')
+    plt.ylabel('Mean points after $10^{}$ games'.format(str(exp)))
 
-plt.figure(1)
-plt.bar(valstr,res_ave)
 
-#plot comparison of prob player and best stick player
-d = [8]
-dstr = [str(x) for x in d]
-resP = test_prob(n_g,19,d)
-resP_ave =[]
-
-for i in range(0,len(resP)):
-    resP_ave.append(sum(resP[i])/len(resP[i]))
-
-resP_ave.append(res_ave[3])
-dstr.append('stick')
-print(resP_ave)
-plt.figure(2)
-plt.bar(dstr,resP_ave)
-plt.show()
-print('done')
+    plt.show()
