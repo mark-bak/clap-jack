@@ -1,6 +1,7 @@
+##Some code to simulate an odd card game with different play strategies
 import random
 from itertools import permutations
-from collections import Counter
+import matplotlib.pyplot as plt
 
 class Game():
 
@@ -48,6 +49,7 @@ class Game():
 
 
 class Cards():
+    ##Deck of cards used in game, with shuffle and deal funtions##
     def __init__(self):
         #list of cards in game
         self.cards = {
@@ -79,20 +81,15 @@ class Cards():
             "bK":10,
             "bA":11,
         }
-
-        self.shuffledcards = {}
         self.order = list(self.cards.keys())
         self.n = 0
         self.cards_left = True
 
     def shuffle(self):
         random.shuffle(self.order)    
-        for key in self.order:
-            self.shuffledcards[key] = self.cards[key]
-        self.cards = self.shuffledcards
 
     def deal(self):
-        #deal card, returns name and nominal value
+        #deals next card, returns name and nominal value
         if self.n+1==len(self.order): # check cards left
             self.cards_left = False
         card = self.order[self.n]
@@ -101,8 +98,6 @@ class Cards():
         return card,value
 
 class SimplePlayer():
-    #def __init__(self,stick_val):
-        #self.stick_val = stick_val
     
     def reset(self):
         self.cards_dealt ={}
@@ -111,6 +106,7 @@ class SimplePlayer():
         self.cards_remaining = c.cards
 
     def decide(self):
+        #always draw and therefore always lose
         return 'draw'
 
     def update(self,card,value):
@@ -123,7 +119,7 @@ class StickPlayer(SimplePlayer):
         self.stick_val = stick_val
 
     def decide(self):
-        if self.score>self.stick_val:
+        if self.score>=self.stick_val:
             return 'stick'
         else:
             return 'draw'
@@ -147,7 +143,7 @@ class ProbPlayer(SimplePlayer):
                 return 'stick'
             #else:
             #    print('hit me')
-        if self.score>self.stick_val and n_rem_cards>self.depth:
+        if self.score>=self.stick_val and n_rem_cards>self.depth:
             return 'stick'
         else:
             return 'draw'
@@ -187,30 +183,57 @@ class ProbPlayer(SimplePlayer):
         score_exp = sum(scores)*base_prob
         return score_exp
 
-
-
-res=[]
-
-vals = [18]
-
-for v in vals:
-    p=[]
-    player = StickPlayer(v)
+def play_games(player,no_games):
     game = Game(player)
-    for i in range(0,1000):
+    points = []
+    for i in range(0,no_games):
         game.start()
-        p.append(game.play())
-    res.append(round(sum(p)/len(p),2))
-    p=[]
-    player = ProbPlayer(v,7)
-    game = Game(player)
-    for i in range(0,1000):
-        game.start()
-        p.append(game.play())
-    res.append(round(sum(p)/len(p),2))
+        points.append(game.play())
+    return points
 
 
 
-print(res)
+def test_stick(no_games,vals):
+    results =[]
+    for v in vals:
+        player = StickPlayer(v)
+        results.append(play_games(player,no_games))
+    return results
 
-    
+def test_prob(no_games,vals,depth):
+    results =[]
+    for d in depth:
+        player = ProbPlayer(vals,d)
+        results.append(play_games(player,no_games))
+    return results
+
+n_g = 100000
+
+#plot optimal stick value
+vals = [16,17,18,19,20,21,22,23,24,25]
+valstr = [str(v) for v in vals]
+res = test_stick(n_g,vals)
+res_ave =[]
+
+for i in range(0,len(res)):
+    res_ave.append(sum(res[i])/len(res[i]))
+
+plt.figure(1)
+plt.bar(valstr,res_ave)
+
+#plot comparison of prob player and best stick player
+d = [8]
+dstr = [str(x) for x in d]
+resP = test_prob(n_g,19,d)
+resP_ave =[]
+
+for i in range(0,len(resP)):
+    resP_ave.append(sum(resP[i])/len(resP[i]))
+
+resP_ave.append(res_ave[3])
+dstr.append('stick')
+print(resP_ave)
+plt.figure(2)
+plt.bar(dstr,resP_ave)
+plt.show()
+print('done')
