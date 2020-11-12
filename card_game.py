@@ -115,6 +115,13 @@ class SimplePlayer():
         self.cards_dealt[card] = value
         self.score+=value
 
+    def cumulative_score(self,lis,d,cur_score):
+        for i in range(0,len(lis)):
+            lis[i][0] += cur_score #add current score to first item
+            for j in range(1,d):
+                lis[i][j] += lis[i][j-1] #get cumulative score
+        return lis
+
 class StickPlayer(SimplePlayer):
     def __init__(self,stick_val):
         self.stick_val = stick_val
@@ -154,7 +161,7 @@ class ProbPlayer(SimplePlayer):
 
             perms = list(permutations(self.cards_remaining.values(),n_rem_cards))
             permslist = [list(t) for t in perms]
-            cumulative_score = self.cumulative_score(permslist,n_rem_cards)
+            cumulative_score = self.cumulative_score(permslist,n_rem_cards,self.score)
             s_ex = self.determine_prob(cumulative_score,n_rem_cards)
             #print('expected: '+str(s_ex))
             #print('current: ' + str(25-self.score))
@@ -167,21 +174,11 @@ class ProbPlayer(SimplePlayer):
         else:
             return 'draw'
 
-    def cumulative_score(self,lis,d):
-        for i in range(0,len(lis)):
-            lis[i][0] += self.score #add current score to first item
-            for j in range(1,d):
-                lis[i][j] += lis[i][j-1] #get cumulative score
-        return lis
-
     def determine_prob(self,c_s,d):
-        #bust_ind =[]
-        #bet_ind = []
         scores =[]
 
         check_ind = []
         check_ind_next = list(range(0,len(c_s)))
-        #worse_ind =[]
         for j in range(0,d):
             check_ind = check_ind_next[:]
             check_ind_next.clear()
@@ -190,12 +187,10 @@ class ProbPlayer(SimplePlayer):
             for i in check_ind:
                 if c_s[i][j]>25:                  
                     scores.append(10)
-                    #bust_ind.append(i)
                 elif c_s[i][j]>15 and c_s[i][j]<=25:
                     #c_new = [v[j+1:d] for v in c_s]
                     #scores.append(self.determine_prob(c_new,d-(j+1))) # some funky recursion, can gt rid as is slows down a lot for not much improve
-                    scores.append(25-c_s[i][j])
-                    #bet_ind.append(i)
+                    scores.append(25-c_s[i][j]) # slightly underestsimates expected score, but so much quicker than doing the recursion
                 else:
                     check_ind_next.append(i)
 
