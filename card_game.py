@@ -169,9 +169,9 @@ class ProbPlayer(SimplePlayer):
 
     def cumulative_score(self,lis,d):
         for i in range(0,len(lis)):
-            lis[i][0] += self.score 
+            lis[i][0] += self.score #add current score to first item
             for j in range(1,d):
-                lis[i][j] += lis[i][j-1]
+                lis[i][j] += lis[i][j-1] #get cumulative score
         return lis
 
     def determine_prob(self,c_s,d):
@@ -192,13 +192,18 @@ class ProbPlayer(SimplePlayer):
                     scores.append(10)
                     #bust_ind.append(i)
                 elif c_s[i][j]>15 and c_s[i][j]<=25:
+                    #c_new = [v[j+1:d] for v in c_s]
+                    #scores.append(self.determine_prob(c_new,d-(j+1))) # some funky recursion, can gt rid as is slows down a lot for not much improve
                     scores.append(25-c_s[i][j])
                     #bet_ind.append(i)
                 else:
                     check_ind_next.append(i)
 
         scores = scores+[10]*len(check_ind)
-        base_prob = 1/len(c_s)
+        if len(c_s)==0:
+            base_prob = 0
+        else:
+            base_prob = 1/len(c_s)
 
         score_exp = sum(scores)*base_prob
         return score_exp
@@ -228,7 +233,7 @@ def play_games(player,no_games):
 
 if __name__ == "__main__":
     #stops these tests from running if this is imported as a moduel for some reason
-    exp = 5
+    exp = 4
     n_g = pow(10,exp)
     ## find optimal stick value ##
     vals = [16,17,18,19,20,21,22,23,24,25]
