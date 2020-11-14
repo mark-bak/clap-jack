@@ -43,23 +43,25 @@ def get_ace_combos(shuf_d):
     bAp1_rAn1 = [x[:] for x in shuf_d]
     bAp1_rAn11 = [x[:] for x in shuf_d]
     for i in range(0,len(bAp11_rAn11)):
+        #permutations for bA=+11,rA=-11
         ind = bAp11_rAn11[i].index(-1)
         bAp11_rAn11[i][ind] = -11
-    for i in range(0,len(bAp1_rAn1)):
+        #permutations for bA=+1,rA=-1
         ind = bAp1_rAn1[i].index(11)
         bAp1_rAn1[i][ind] = 1
-    for i in range(0,len(bAp1_rAn11)):
+        #permutations for bA=+1,rA=-11
         ind = bAp1_rAn11[i].index(11)
         bAp1_rAn11[i][ind] = 1
         ind = bAp1_rAn11[i].index(-1)
         bAp1_rAn11[i][ind] = -11
+
     return shuf_d,bAp11_rAn11,bAp1_rAn1,bAp1_rAn11
 
 def find_best_game(ideals):
     best_possible_score = []
     pos=[]
     for i in range(0,len(ideals[0])):
-        #this really shouldnt be harcoded like this but oh well
+        #this really shouldnt be harcoded like this but oh well as long as they dont add a fifth suit to cards we are fine
         l = [ideals[0][i],ideals[1][i],ideals[2][i],ideals[3][i]]
         best_possible_score.append(max(l))
         pos.append(l.index(best_possible_score[-1]))
@@ -83,7 +85,12 @@ if __name__=='__main__':
     freq = Counter(pos)
     freq_list=[]
     for i in range(0,len(freq)):
-        freq_list.append(round(100*freq[i]/n))
+        freq_list.append(100*freq[i]/n)
     
-    print(p_ave)
-    print(freq_list)
+    print('\nMean score over 10^{} games is '.format(str(exp)) + str(round(p_ave,2))+'\n')
+    print('''Choice of ace values in winning games:
+    bA=+11,rA=-1 : {}% 
+    bA=+11,rA=-11: {}%
+    bA=+1 ,rA=-1 : {}%
+    bA=+1 ,rA=-11: {}%
+    '''.format(str(round(freq_list[0])),str(round(freq_list[1])),str(round(freq_list[2])),str(round(freq_list[3]))))

@@ -5,14 +5,18 @@ from itertools import permutations
 import matplotlib.pyplot as plt
 
 class Game():
-
+    ## Requires player as argument (inherit from SimplePlayer)
+    ## Handles each turn, ending of game
+    ## Game.start() resets game and player, Game.play() plays until bust, no cards or player sticks and returns points won
     def __init__(self,player):
         self.player = player
+        self.c = Cards()
 
     def start(self):
-        self.player.reset()
-        self.c = Cards()
+        #self.c = Cards()
+        self.c.reset()
         self.c.shuffle()
+        self.player.reset()
         self.finished = False
 
     def play(self):
@@ -21,7 +25,7 @@ class Game():
         return p
 
     def step(self):
-        
+        #this logic could maybe be made simpler but it works       
         #check if cards remaining or player is bust
         if self.c.cards_left == False or self.player.score>25:
             p = self.end_game(self.player)
@@ -34,6 +38,7 @@ class Game():
                 card,value = self.c.deal()
                 self.player.update(card,value)
         if self.finished == True:
+            #return points at end of game
             return p 
 
     def end_game(self,player):
@@ -42,15 +47,11 @@ class Game():
         else:
             points = 25-player.score
         self.finished = True
-        #print(self.cards_remaining)
-        #print('cards: '+str(player.cards_dealt))
-        #print("score: "+str(player.score))
-        #print('points :'+str(points))
         return points
 
 
 class Cards():
-    ##Deck of cards used in game, with shuffle and deal funtions##
+    ## Deck of cards used in game, with shuffle() and deal() methods
     def __init__(self):
         #list of cards in game
         self.cards = {
@@ -86,6 +87,11 @@ class Cards():
         self.n = 0
         self.cards_left = True
 
+    def reset(self):
+        self.n=0
+        self.order = list(self.cards.keys())
+        self.cards_left = True
+
     def shuffle(self):
         random.shuffle(self.order)    
 
@@ -99,12 +105,17 @@ class Cards():
         return card,value
 
 class SimplePlayer():
+    ## Player that has reset, update methods req for Game(). To make own player inherit from this and
+    ## override decide() method
+    def __init__(self):
+        #used to be something here
+        pass
     
     def reset(self):
+        self.deck=Cards()
         self.cards_dealt ={}
         self.score = 0
-        c = Cards()
-        self.cards_remaining = c.cards
+        self.cards_remaining = self.deck.cards
 
     def decide(self):
         #always draw and therefore always lose
@@ -123,7 +134,9 @@ class SimplePlayer():
         return lis
 
 class StickPlayer(SimplePlayer):
+    ##Improved player that sticks on turn if score>val
     def __init__(self,stick_val):
+        super().__init__()
         self.stick_val = stick_val
 
     def decide(self):
@@ -133,7 +146,9 @@ class StickPlayer(SimplePlayer):
             return 'draw'
 
 class ImpStickPlayer(SimplePlayer):
+    ##Improved player that sticks on turn if score>val and also will change +11 ace to +1 if it will make bust
     def __init__(self,stick_val):
+        super().__init__()
         self.stick_val = stick_val
 
     def decide(self):
@@ -143,7 +158,7 @@ class ImpStickPlayer(SimplePlayer):
             return 'draw'
 
     def update(self,card,value):
-        #set ace low if it makes you bust
+        #set black ace from +11 to +1 if it makes you bust
         if card == 'bA' and self.score+value>25:
             value = 1
         self.cards_remaining.pop(card)
@@ -151,59 +166,74 @@ class ImpStickPlayer(SimplePlayer):
         self.score+=value
 
 class ProbPlayer(SimplePlayer):
+    ## Player that when it is in lategame (cards_rem<depth) and is in scoring position, searches to see if the expected points from
+    ## playing on are better than current and uses this to decide wether to draw
     def __init__(self,stick_val,depth):
+        super().__init__()
         self.stick_val = stick_val
         self.depth=depth
 
     def decide(self):
         n_rem_cards = len(self.cards_remaining)
-        if self.score>15 and n_rem_cards<=self.depth:
 
+        if self.score>15 and n_rem_cards<=self.depth:
+            #this happens when in scoring position and in lategame
             perms = list(permutations(self.cards_remaining.values(),n_rem_cards))
             permslist = [list(t) for t in perms]
             cumulative_score = self.cumulative_score(permslist,n_rem_cards,self.score)
-            s_ex = self.determine_prob(cumulative_score,n_rem_cards)
-            #print('expected: '+str(s_ex))
-            #print('current: ' + str(25-self.score))
-            if s_ex>25-self.score:
+            p_ex = self.determine_prob(cumulative_score,n_rem_cards) # expected score
+            if p_ex>25-self.score:
+                #if expected points are higher (worse) stick
                 return 'stick'
-            #else:
-            #    print('hit me')
+
         if self.score>=self.stick_val and n_rem_cards>self.depth:
+            #if not in lategame, stick on values score>val
             return 'stick'
         else:
+            #otherwise draw
             return 'draw'
 
     def determine_prob(self,c_s,d):
-        scores =[]
-
+        ##there is a small problem with how this evaluates winning positions (just takes a score as winning) - can be fixed with
+        ## recursively applying this method in scoring permutations, but this gets slow and messy :(
+        points =[]
+        #set of lists for which permutations stil need to be checked (i.e have not been determined bust or winning)
         check_ind = []
         check_ind_next = list(range(0,len(c_s)))
+
         for j in range(0,d):
+            #copy values to check for next iteration
             check_ind = check_ind_next[:]
             check_ind_next.clear()
             
             #check whether lines are bust or winning
             for i in check_ind:
-                if c_s[i][j]>25:                  
-                    scores.append(10)
+                if c_s[i][j]>25:  
+                    #bust                
+                    points.append(10)
                 elif c_s[i][j]>15 and c_s[i][j]<=25:
                     #c_new = [v[j+1:d] for v in c_s]
                     #scores.append(self.determine_prob(c_new,d-(j+1))) # some funky recursion, can gt rid as is slows down a lot for not much improve
-                    scores.append(25-c_s[i][j]) # slightly underestsimates expected score, but so much quicker than doing the recursion
+                    points.append(25-c_s[i][j]) # slightly underestsimates expected score, but so much quicker than doing the recursion
                 else:
+                    #add non bust or winning permutations to next iteration for checking
                     check_ind_next.append(i)
+                    
+        points = points+[10]*len(check_ind) #all remaining perms not already checked will be worth 10 (out of cards)
 
-        scores = scores+[10]*len(check_ind)
+        # a really roundabout way to just get the mean, but its staying for now :) as this is how I thought it through
         if len(c_s)==0:
             base_prob = 0
         else:
             base_prob = 1/len(c_s)
+        points_exp = sum(points)*base_prob
 
-        score_exp = sum(scores)*base_prob
-        return score_exp
+        return points_exp
 
 class ImpProbPlayer(ProbPlayer):
+    ## Same as prob player but goes bust less as it changes the bA+11 to -1 when immediately about to go bust
+    ## This one is decent improvement on just sticking - still reckon theres a lot of improvement possible with different
+    ## stick values at different earlier game stages, and more accurate and efficient calculator of effective score lategame
     def __init__(self,stick_val,depth):
         super().__init__(stick_val,depth)
 
@@ -216,8 +246,8 @@ class ImpProbPlayer(ProbPlayer):
         self.score+=value
     
 
-
 def play_games(player,no_games):
+    ## test function to play lots of games with a certain player and return points scored as a list
     game = Game(player)
     points = []
     for i in range(0,no_games):
@@ -227,8 +257,9 @@ def play_games(player,no_games):
 
 
 if __name__ == "__main__":
-    #stops these tests from running if this is imported as a moduel for some reason
-    exp = 4
+    #stops these tests from running if this is imported as a module
+    
+    exp = 5 #run 10^exp games
     n_g = pow(10,exp)
     ## find optimal stick value ##
     vals = [16,17,18,19,20,21,22,23,24,25]
@@ -273,5 +304,5 @@ if __name__ == "__main__":
     plt.xlabel('Strategy')
     plt.ylabel('Mean points after $10^{}$ games'.format(str(exp)))
 
-
+    #show the beautiful plots
     plt.show()
